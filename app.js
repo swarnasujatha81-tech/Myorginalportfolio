@@ -18,6 +18,10 @@
         ...savedData,
         profile: { ...data.profile, ...savedData.profile }
       };
+      if (!Array.isArray(savedData.steps) && Array.isArray(savedData.achievements)) {
+        data.steps = savedData.achievements;
+        data.achievements = [];
+      }
     }
   } catch (error) {
     console.error("Could not load locally saved portfolio edits.", error);
@@ -116,7 +120,8 @@
             <h1>Your site,<br><em>your story.</em></h1>
             <nav class="editor-nav" aria-label="Edit portfolio">
               <button class="editor-tab" data-category="profile">Your details</button>
-              <button class="editor-tab" data-category="achievements">Achievements <span>${data.achievements.length}</span></button>
+              <button class="editor-tab" data-category="steps">Every step <span>${(data.steps || []).length}</span></button>
+              <button class="editor-tab" data-category="achievements">Achievements <span>${(data.achievements || []).length}</span></button>
               <button class="editor-tab" data-category="projects">Projects <span>${data.projects.length}</span></button>
               <button class="editor-tab" data-category="current">Right now <span>${data.current.length}</span></button>
               <button class="editor-tab" data-category="participation">Participation <span>${(data.participation || []).length}</span></button>
@@ -179,7 +184,7 @@
       return;
     }
 
-    const label = editorCategory === "current" ? "Current work" : editorCategory === "projects" ? "Projects" : editorCategory === "participation" ? "Participation" : "Achievements";
+    const label = editorCategory === "current" ? "Current work" : editorCategory === "projects" ? "Projects" : editorCategory === "participation" ? "Participation" : editorCategory === "steps" ? "Every step counts" : "Achievements";
     const entries = data[editorCategory];
     target.innerHTML = `
       <div class="editor-heading"><div><span class="admin-label">${label.toUpperCase()}</span><h2>${label}</h2><p>Add, edit, or remove items shown on the public site.</p></div><button class="button button-primary" id="add-entry">+ Add item</button></div>
@@ -216,11 +221,12 @@
     const fields = [
       ["title", "Title", true],
       ["category", "Category", false],
-      ...(editorCategory === "achievements" ? [["year", "Year or stage", false]] : []),
+      ...(["achievements", "steps"].includes(editorCategory) ? [["year", "Year or stage", false]] : []),
+      ...(editorCategory === "achievements" ? [["certificate", "Certificate or source link", false]] : []),
       ...(editorCategory === "participation" ? [["organizer", "Organiser", false], ["date", "Date or year", false], ["certificate", "Certificate or event link", false]] : []),
       ["description", "Description", true],
       ...(isProject ? [["problem", "Problem addressed", false], ["solution", "Your approach", false], ["video", "YouTube video URL", false], ["github", "GitHub URL", false], ["images", "Photo URLs (one per line)", false]] : []),
-      ["image", "Image URL", false]
+      ...(editorCategory !== "achievements" ? [["image", "Image URL", false]] : [])
     ];
     const wrap = app.querySelector("#entry-form-wrap");
     wrap.innerHTML = `
@@ -248,7 +254,7 @@
       const files = [...form.getAll("imageFiles")].filter((file) => file instanceof File && file.size);
       if (files.length) {
         const uploadedImages = await Promise.all(files.map(readImage));
-        if (editorCategory === "projects") item.images.push(...uploadedImages);
+        if (["projects", "achievements"].includes(editorCategory)) item.images.push(...uploadedImages);
         else item.image = uploadedImages[0];
       }
       if (!item.image && item.images.length) item.image = item.images[0];
@@ -325,7 +331,8 @@
   const profile = data.profile;
   const sections = [
     { href: "#story", label: "My story" },
-    { href: "#achievements", label: "Achievements" },
+    { href: "#steps", label: "Every step" },
+    ...(data.achievements.length ? [{ href: "#achievements", label: "Achievements" }] : []),
     ...(data.projects.length ? [{ href: "#projects", label: "Projects" }] : []),
     ...(data.current.length ? [{ href: "#now", label: "Right now" }] : [])
   ];
@@ -408,15 +415,39 @@
         </div>
       </section>
 
-      ${data.achievements.length ? `
-        <section class="milestones-section section-shell" id="achievements">
-          <div class="section-kicker"><span>ACHIEVEMENTS</span></div>
+      ${data.steps?.length ? `
+        <section class="milestones-section section-shell" id="steps">
+          <div class="section-kicker"><span>MY JOURNEY SO FAR</span></div>
           <div class="section-heading">
             <h2>Every step<br>counts.</h2>
             <p>Each achievement is a reminder to keep learning and moving forward.</p>
           </div>
           <div class="milestone-track" aria-label="Achievements">
-            ${data.achievements.map(renderAchievement).join("")}
+            ${data.steps.map(renderAchievement).join("")}
+          </div>
+        </section>` : ""}
+
+      ${data.achievements?.length ? `
+        <section class="achievements-section section-shell" id="achievements">
+          <div class="section-kicker"><span>ACHIEVEMENTS</span></div>
+          <div class="section-heading">
+            <h2>Achievements</h2>
+            <p>Certificates, recognition, and milestones I have earned along the way.</p>
+          </div>
+          <div class="achievement-grid">
+            ${data.achievements.map((item, index) => {
+              const photos = [...new Set([...(item.images || []), item.image].filter(Boolean))];
+              const certificateUrl = safeUrl(item.certificate);
+              return `<article class="achievement-card reveal" style="--card-index:${index}">
+                ${photos.length ? `<div class="achievement-photo-grid">${photos.map((photo, photoIndex) => `<a class="achievement-photo" href="${escapeHtml(safeUrl(photo))}" target="_blank" rel="noreferrer" aria-label="Open photo ${photoIndex + 1} for ${escapeHtml(item.title)}">${media(photo, `${item.title} photo ${photoIndex + 1}`)}</a>`).join("")}</div>` : `<div class="achievement-photo-placeholder"><span>${String(index + 1).padStart(2, "0")}</span></div>`}
+                <div class="achievement-copy">
+                  <span class="item-category">${escapeHtml(item.category || "Achievement")}${item.year ? ` - ${escapeHtml(item.year)}` : ""}</span>
+                  <h3>${escapeHtml(item.title)}</h3>
+                  <p>${escapeHtml(item.description)}</p>
+                  ${certificateUrl ? `<a class="certificate-link" href="${escapeHtml(certificateUrl)}" target="_blank" rel="noreferrer">View certificate or details ${icon("external")}</a>` : ""}
+                </div>
+              </article>`;
+            }).join("")}
           </div>
         </section>` : ""}
 

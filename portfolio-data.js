@@ -1,4 +1,4 @@
-﻿window.PORTFOLIO_DATA = {
+window.PORTFOLIO_DATA = {
   profile: {
     name: "Swarna Mohan Chowdhary",
     location: "Telangana, India",
@@ -13,7 +13,7 @@
     story: "I grew up with limited resources and learned early to make the most of what I had. I studied from class 1 to 10 at a government school in Ameerpet, scoring 90%. In intermediate, I chose MPC at a private college and scored 98%. Physics became a subject I genuinely loved. Today I am a second-year mechanical engineering student at JNTUH College of Engineering, building toward a future shaped by curiosity, persistence, and making things that matter.",
     subscribers: "7,000+"
   },
-  achievements: [
+  steps: [
     {
       id: "government-school",
       title: "A strong start in a government school",
@@ -47,6 +47,7 @@
       image: ""
     }
   ],
+  achievements: [],
   projects: [],
   current: [],
   participation: []
